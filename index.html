@@ -204,17 +204,17 @@
       <div class="row">
         <div>
           <label>Shoot rate (balls/s)</label>
-          <input id="trShoot" type="range" min="0" max="12" step="0.1" value="4">
+          <input id="trShoot" type="range" min="0" max="12" step="0.1" value="5">
         </div>
-        <div class="ctrl"><input id="trShootNum" type="number" min="0" max="12" step="0.1" value="4"></div>
+        <div class="ctrl"><input id="trShootNum" type="number" min="0" max="12" step="0.1" value="5"></div>
       </div>
 
       <div class="row">
         <div>
           <label>Traverse time (sec each way)</label>
-          <input id="trTraverse" type="range" min="0.5" max="20" step="0.1" value="4">
+          <input id="trTraverse" type="range" min="0.5" max="20" step="0.1" value="3">
         </div>
-        <div class="ctrl"><input id="trTraverseNum" type="number" min="0.5" max="20" step="0.1" value="4"></div>
+        <div class="ctrl"><input id="trTraverseNum" type="number" min="0.5" max="20" step="0.1" value="3"></div>
       </div>
 
       <div class="sectionTitle">Bump Bot (harder path)</div>
@@ -230,17 +230,17 @@
       <div class="row">
         <div>
           <label>Shoot rate (balls/s)</label>
-          <input id="bpShoot" type="range" min="0" max="12" step="0.1" value="4">
+          <input id="bpShoot" type="range" min="0" max="12" step="0.1" value="5">
         </div>
-        <div class="ctrl"><input id="bpShootNum" type="number" min="0" max="12" step="0.1" value="4"></div>
+        <div class="ctrl"><input id="bpShootNum" type="number" min="0" max="12" step="0.1" value="5"></div>
       </div>
 
       <div class="row">
         <div>
           <label>Traverse time (sec each way)</label>
-          <input id="bpTraverse" type="range" min="0.5" max="30" step="0.1" value="8">
+          <input id="bpTraverse" type="range" min="0.5" max="30" step="0.1" value="5">
         </div>
-        <div class="ctrl"><input id="bpTraverseNum" type="number" min="0.5" max="30" step="0.1" value="8"></div>
+        <div class="ctrl"><input id="bpTraverseNum" type="number" min="0.5" max="30" step="0.1" value="5"></div>
       </div>
 
       <div class="sectionTitle">Pickup decay (both bots)</div>
@@ -256,17 +256,17 @@
       <div class="row">
         <div>
           <label>Growth factor</label>
-          <input id="pkGrowth" type="range" min="0" max="2.0" step="0.01" value="0.20">
+          <input id="pkGrowth" type="range" min="0" max="2.0" step="0.01" value="0.05">
         </div>
-        <div class="ctrl"><input id="pkGrowthNum" type="number" min="0" max="2.0" step="0.01" value="0.20"></div>
+        <div class="ctrl"><input id="pkGrowthNum" type="number" min="0" max="2.0" step="0.01" value="0.05"></div>
       </div>
 
       <div class="row">
         <div>
           <label>Exponent</label>
-          <input id="pkExp" type="range" min="0" max="3.0" step="0.05" value="1.20">
+          <input id="pkExp" type="range" min="0" max="3.0" step="0.05" value="0.80">
         </div>
-        <div class="ctrl"><input id="pkExpNum" type="number" min="0" max="3.0" step="0.05" value="1.20"></div>
+        <div class="ctrl"><input id="pkExpNum" type="number" min="0" max="3.0" step="0.05" value="0.80"></div>
       </div>
 
       <div class="btns">
@@ -338,8 +338,8 @@ class RobotSim {
     this.shootRate = 4.0;
     this.traverseTime = 4.0;
     this.pickBase = 0.10;
-    this.pickGrowth = 0.20;
-    this.pickExponent = 1.20;
+    this.pickGrowth = 0.05;
+    this.pickExponent = .80;
   }
   resetRuntime(){
     this.state = STATE_SHOOT;
