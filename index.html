@@ -1,0 +1,824 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>FRC 25s Hopper Simulator (Trench vs Bump)</title>
+  <style>
+    :root{
+      --bg:#0b1020;
+      --panel:#121a33;
+      --panel2:#0f1730;
+      --text:#e9ecff;
+      --muted:#aeb6e6;
+      --line:#26305a;
+      --blue:#2a7fff;
+      --red:#ff3b3b;
+      --good:#41d37e;
+      --warn:#ffcc66;
+    }
+    *{ box-sizing:border-box; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; }
+    body{
+      margin:0; background:linear-gradient(180deg,#070b18, var(--bg));
+      color:var(--text);
+    }
+    header{
+      padding:16px 18px;
+      border-bottom:1px solid rgba(255,255,255,.08);
+      background:rgba(0,0,0,.15);
+    }
+    header h1{ margin:0; font-size:18px; font-weight:700; letter-spacing:.2px; }
+    header p{ margin:6px 0 0; color:var(--muted); font-size:13px; }
+
+    .wrap{
+      display:grid;
+      grid-template-columns: 380px 1fr;
+      gap:14px;
+      padding:14px;
+      min-height: calc(100vh - 70px);
+    }
+
+    .card{
+      background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:14px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.25);
+      overflow:hidden;
+    }
+    .panel{
+      padding:14px;
+      background:rgba(0,0,0,.08);
+    }
+    .panel h2{
+      margin:0 0 10px;
+      font-size:14px; letter-spacing:.2px;
+      color:var(--text);
+    }
+    .sectionTitle{
+      margin:14px 0 8px;
+      padding-top:12px;
+      border-top:1px solid rgba(255,255,255,.08);
+      font-size:13px;
+      font-weight:700;
+      color:var(--text);
+    }
+
+    .row{
+      display:grid;
+      grid-template-columns: 1fr 120px;
+      gap:10px;
+      align-items:center;
+      margin:10px 0;
+    }
+    .row label{
+      font-size:12px;
+      color:var(--muted);
+      display:block;
+      margin-bottom:6px;
+    }
+    .ctrl{
+      display:flex;
+      gap:8px;
+      align-items:center;
+    }
+    input[type="range"]{ width:100%; }
+    input[type="number"]{
+      width:120px;
+      padding:8px 10px;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,.12);
+      background:rgba(0,0,0,.25);
+      color:var(--text);
+      outline:none;
+    }
+    input[type="number"]:focus{ border-color: rgba(255,255,255,.28); }
+
+    .btns{
+      display:flex;
+      gap:10px;
+      margin-top:12px;
+    }
+    button{
+      cursor:pointer;
+      flex:1;
+      padding:10px 12px;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(255,255,255,.06);
+      color:var(--text);
+      font-weight:700;
+      letter-spacing:.2px;
+    }
+    button:hover{ background:rgba(255,255,255,.10); }
+    button.primary{
+      background:rgba(42,127,255,.18);
+      border-color: rgba(42,127,255,.40);
+    }
+    button.primary:hover{ background:rgba(42,127,255,.25); }
+
+    .status{
+      margin-top:12px;
+      padding:12px;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,.10);
+      background:rgba(0,0,0,.20);
+      font-size:13px;
+      color:var(--text);
+      line-height:1.35;
+    }
+    .status .muted{ color:var(--muted); }
+
+    .simArea{
+      padding:12px;
+      display:grid;
+      grid-template-rows: auto 1fr;
+      gap:10px;
+    }
+    .topBar{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+      padding:10px 12px;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,.10);
+      background:rgba(0,0,0,.20);
+      color:var(--muted);
+      font-size:13px;
+    }
+    .pill{
+      padding:6px 10px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.10);
+      background:rgba(255,255,255,.05);
+      color:var(--text);
+      font-weight:700;
+    }
+    canvas{
+      width:100%;
+      height:100%;
+      display:block;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.10);
+      background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(0,0,0,.10));
+    }
+
+    @media (max-width: 980px){
+      .wrap{ grid-template-columns: 1fr; }
+      input[type="number"]{ width:110px; }
+    }
+  </style>
+</head>
+<body>
+<header>
+  <h1>FRC 25s Hopper Simulator — Trench vs Bump</h1>
+  <p>Two robots loop: <b>shoot → travel → pickup (decay) → return → shoot</b> until time runs out.</p>
+</header>
+
+<div class="wrap">
+  <!-- Controls -->
+  <div class="card">
+    <div class="panel">
+      <h2>Controls</h2>
+
+      <div class="row">
+        <div>
+          <label for="simDuration">Sim duration (sec)</label>
+          <input id="simDuration" type="range" min="5" max="60" step="1" value="25">
+        </div>
+        <div class="ctrl">
+          <input id="simDurationNum" type="number" min="5" max="60" step="1" value="25">
+        </div>
+      </div>
+
+      <div class="sectionTitle">Trench Bot (easier path)</div>
+
+      <div class="row">
+        <div>
+          <label>Capacity (balls)</label>
+          <input id="trCapacity" type="range" min="1" max="80" step="1" value="40">
+        </div>
+        <div class="ctrl"><input id="trCapacityNum" type="number" min="1" max="80" step="1" value="40"></div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label>Shoot rate (balls/s)</label>
+          <input id="trShoot" type="range" min="0" max="12" step="0.1" value="4">
+        </div>
+        <div class="ctrl"><input id="trShootNum" type="number" min="0" max="12" step="0.1" value="4"></div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label>Traverse time (sec each way)</label>
+          <input id="trTraverse" type="range" min="0.5" max="20" step="0.1" value="4">
+        </div>
+        <div class="ctrl"><input id="trTraverseNum" type="number" min="0.5" max="20" step="0.1" value="4"></div>
+      </div>
+
+      <div class="sectionTitle">Bump Bot (harder path)</div>
+
+      <div class="row">
+        <div>
+          <label>Capacity (balls)</label>
+          <input id="bpCapacity" type="range" min="1" max="140" step="1" value="60">
+        </div>
+        <div class="ctrl"><input id="bpCapacityNum" type="number" min="1" max="140" step="1" value="60"></div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label>Shoot rate (balls/s)</label>
+          <input id="bpShoot" type="range" min="0" max="12" step="0.1" value="4">
+        </div>
+        <div class="ctrl"><input id="bpShootNum" type="number" min="0" max="12" step="0.1" value="4"></div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label>Traverse time (sec each way)</label>
+          <input id="bpTraverse" type="range" min="0.5" max="30" step="0.1" value="8">
+        </div>
+        <div class="ctrl"><input id="bpTraverseNum" type="number" min="0.5" max="30" step="0.1" value="8"></div>
+      </div>
+
+      <div class="sectionTitle">Pickup decay (both bots)</div>
+
+      <div class="row">
+        <div>
+          <label>Base time per ball (sec)</label>
+          <input id="pkBase" type="range" min="0.01" max="2.0" step="0.01" value="0.10">
+        </div>
+        <div class="ctrl"><input id="pkBaseNum" type="number" min="0.01" max="2.0" step="0.01" value="0.10"></div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label>Growth factor</label>
+          <input id="pkGrowth" type="range" min="0" max="2.0" step="0.01" value="0.20">
+        </div>
+        <div class="ctrl"><input id="pkGrowthNum" type="number" min="0" max="2.0" step="0.01" value="0.20"></div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label>Exponent</label>
+          <input id="pkExp" type="range" min="0" max="3.0" step="0.05" value="1.20">
+        </div>
+        <div class="ctrl"><input id="pkExpNum" type="number" min="0" max="3.0" step="0.05" value="1.20"></div>
+      </div>
+
+      <div class="btns">
+        <button id="startBtn" class="primary">Start</button>
+        <button id="resetBtn">Reset</button>
+      </div>
+
+      <div class="status" id="statusBox">
+        <div><b>Time:</b> <span class="muted">0.00s / 25s</span></div>
+        <div style="margin-top:6px"><b>Trench:</b> <span class="muted">0</span> scored</div>
+        <div><b>Bump:</b> <span class="muted">0</span> scored</div>
+        <div style="margin-top:6px"><b>Lead:</b> <span class="muted">Tie</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Simulation Canvas -->
+  <div class="card">
+    <div class="simArea">
+      <div class="topBar">
+        <div>
+          State machine: <span class="pill">SHOOT</span> → <span class="pill">GO_TO_MID</span> → <span class="pill">PICKUP</span> → <span class="pill">RETURN</span>
+        </div>
+        <div class="pill" id="winnerPill">Ready</div>
+      </div>
+      <canvas id="c"></canvas>
+    </div>
+  </div>
+</div>
+
+<script>
+/* -----------------------------
+   Utilities
+------------------------------ */
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+function bindRangeAndNumber(rangeEl, numEl, onChange){
+  const syncFromRange = () => { numEl.value = rangeEl.value; onChange?.(); };
+  const syncFromNum = () => {
+    const v = clamp(parseFloat(numEl.value || rangeEl.min), parseFloat(rangeEl.min), parseFloat(rangeEl.max));
+    numEl.value = v;
+    rangeEl.value = v;
+    onChange?.();
+  };
+  rangeEl.addEventListener("input", syncFromRange);
+  numEl.addEventListener("change", syncFromNum);
+  numEl.addEventListener("keydown", (e)=>{ if(e.key==="Enter") syncFromNum(); });
+  syncFromRange();
+}
+
+/* -----------------------------
+   Robot Simulation
+------------------------------ */
+const STATE_SHOOT = "SHOOT";
+const STATE_GO_MID = "GO_TO_MID";
+const STATE_PICKUP = "PICKUP";
+const STATE_RETURN = "RETURN";
+
+class RobotSim {
+  constructor(name, color, laneY){
+    this.name = name;
+    this.color = color;
+    this.laneY = laneY;
+    this.resetParams();
+    this.resetRuntime();
+  }
+  resetParams(){
+    this.capacity = 40;
+    this.shootRate = 4.0;
+    this.traverseTime = 4.0;
+    this.pickBase = 0.10;
+    this.pickGrowth = 0.20;
+    this.pickExponent = 1.20;
+  }
+  resetRuntime(){
+    this.state = STATE_SHOOT;
+    this.timeInState = 0;
+    this.pos = 0; // 0 = shooting zone, 1 = middle
+
+    this.ballsInRobot = this.capacity;
+    this.ballsScored = 0; // float internal
+    this.shootAccum = 0;
+
+    this.pickedThisTrip = 0;
+    this.pickProgress = 0;
+  }
+
+  pickupTimeForNextBall(){
+    const n = this.pickedThisTrip; // 0 for first
+    const t = this.pickBase * (1 + this.pickGrowth * Math.pow(n, this.pickExponent));
+    return Math.max(0.001, t);
+  }
+
+  update(dt){
+    this.timeInState += dt;
+
+    if(this.state === STATE_SHOOT){
+      this.shootAccum += this.shootRate * dt;
+      if(this.shootAccum >= 1 && this.ballsInRobot > 0){
+        const whole = Math.min(this.ballsInRobot, Math.floor(this.shootAccum));
+        this.ballsInRobot -= whole;
+        this.ballsScored += whole;
+        this.shootAccum -= whole;
+      }
+      if(this.ballsInRobot <= 0){
+        this.ballsInRobot = 0;
+        this.shootAccum = 0;
+        this.state = STATE_GO_MID;
+        this.timeInState = 0;
+      }
+    }
+
+    else if(this.state === STATE_GO_MID){
+      const t = clamp(this.timeInState / Math.max(0.001, this.traverseTime), 0, 1);
+      this.pos = t;
+      if(t >= 1){
+        this.state = STATE_PICKUP;
+        this.timeInState = 0;
+        this.pickedThisTrip = 0;
+        this.pickProgress = 0;
+      }
+    }
+
+    else if(this.state === STATE_PICKUP){
+      if(this.ballsInRobot >= this.capacity){
+        this.ballsInRobot = this.capacity;
+        this.state = STATE_RETURN;
+        this.timeInState = 0;
+        return;
+      }
+
+      this.pickProgress += dt;
+      let nextBallTime = this.pickupTimeForNextBall();
+
+      while(this.pickProgress >= nextBallTime && this.ballsInRobot < this.capacity){
+        this.pickProgress -= nextBallTime;
+        this.ballsInRobot += 1;
+        this.pickedThisTrip += 1;
+        nextBallTime = this.pickupTimeForNextBall();
+      }
+
+      if(this.ballsInRobot >= this.capacity){
+        this.ballsInRobot = this.capacity;
+        this.state = STATE_RETURN;
+        this.timeInState = 0;
+      }
+    }
+
+    else if(this.state === STATE_RETURN){
+      const t = clamp(this.timeInState / Math.max(0.001, this.traverseTime), 0, 1);
+      this.pos = 1 - t;
+      if(t >= 1){
+        this.state = STATE_SHOOT;
+        this.timeInState = 0;
+        this.shootAccum = 0;
+      }
+    }
+  }
+}
+
+/* -----------------------------
+   App State
+------------------------------ */
+const ui = {
+  simDuration: document.getElementById("simDuration"),
+  simDurationNum: document.getElementById("simDurationNum"),
+
+  trCapacity: document.getElementById("trCapacity"),
+  trCapacityNum: document.getElementById("trCapacityNum"),
+  trShoot: document.getElementById("trShoot"),
+  trShootNum: document.getElementById("trShootNum"),
+  trTraverse: document.getElementById("trTraverse"),
+  trTraverseNum: document.getElementById("trTraverseNum"),
+
+  bpCapacity: document.getElementById("bpCapacity"),
+  bpCapacityNum: document.getElementById("bpCapacityNum"),
+  bpShoot: document.getElementById("bpShoot"),
+  bpShootNum: document.getElementById("bpShootNum"),
+  bpTraverse: document.getElementById("bpTraverse"),
+  bpTraverseNum: document.getElementById("bpTraverseNum"),
+
+  pkBase: document.getElementById("pkBase"),
+  pkBaseNum: document.getElementById("pkBaseNum"),
+  pkGrowth: document.getElementById("pkGrowth"),
+  pkGrowthNum: document.getElementById("pkGrowthNum"),
+  pkExp: document.getElementById("pkExp"),
+  pkExpNum: document.getElementById("pkExpNum"),
+
+  startBtn: document.getElementById("startBtn"),
+  resetBtn: document.getElementById("resetBtn"),
+  statusBox: document.getElementById("statusBox"),
+  winnerPill: document.getElementById("winnerPill"),
+
+  canvas: document.getElementById("c"),
+};
+
+const ctx = ui.canvas.getContext("2d");
+
+let running = false;
+let simT = 0;
+let simDuration = 25;
+let lastTS = null;
+
+const trench = new RobotSim("Trench Bot", getComputedStyle(document.documentElement).getPropertyValue("--blue").trim(), 0);
+const bump   = new RobotSim("Bump Bot",   getComputedStyle(document.documentElement).getPropertyValue("--red").trim(),  0);
+
+function applyParams(){
+  simDuration = parseFloat(ui.simDuration.value);
+
+  trench.capacity = Math.round(parseFloat(ui.trCapacity.value));
+  trench.shootRate = parseFloat(ui.trShoot.value);
+  trench.traverseTime = parseFloat(ui.trTraverse.value);
+
+  bump.capacity = Math.round(parseFloat(ui.bpCapacity.value));
+  bump.shootRate = parseFloat(ui.bpShoot.value);
+  bump.traverseTime = parseFloat(ui.bpTraverse.value);
+
+  const pkBase = parseFloat(ui.pkBase.value);
+  const pkGrowth = parseFloat(ui.pkGrowth.value);
+  const pkExp = parseFloat(ui.pkExp.value);
+
+  for(const r of [trench, bump]){
+    r.pickBase = pkBase;
+    r.pickGrowth = pkGrowth;
+    r.pickExponent = pkExp;
+  }
+}
+
+function resetSim(){
+  running = false;
+  ui.startBtn.textContent = "Start";
+  ui.winnerPill.textContent = "Ready";
+  ui.winnerPill.style.borderColor = "rgba(255,255,255,.12)";
+  ui.winnerPill.style.background = "rgba(255,255,255,.05)";
+
+  applyParams();
+  simT = 0;
+  trench.resetRuntime();
+  bump.resetRuntime();
+
+  // ensure start full matches capacity after edits
+  trench.ballsInRobot = trench.capacity;
+  bump.ballsInRobot = bump.capacity;
+
+  draw();
+  updateStatus();
+}
+
+/* -----------------------------
+   Drawing
+------------------------------ */
+function resizeCanvasToDisplaySize(){
+  const dpr = window.devicePixelRatio || 1;
+  const rect = ui.canvas.getBoundingClientRect();
+  const w = Math.floor(rect.width * dpr);
+  const h = Math.floor(rect.height * dpr);
+  if(ui.canvas.width !== w || ui.canvas.height !== h){
+    ui.canvas.width = w;
+    ui.canvas.height = h;
+  }
+  return {w, h, dpr};
+}
+
+function drawField(w, h){
+  ctx.clearRect(0,0,w,h);
+
+  // Layout
+  const margin = 50;
+  const laneGap = 34;
+  const laneH = (h - margin*2 - laneGap) / 2;
+
+  const trenchY0 = margin;
+  const bumpY0 = trenchY0 + laneH + laneGap;
+
+  const shootW = 140;
+  const midW = 140;
+
+  // background grid-ish
+  ctx.globalAlpha = 0.12;
+  ctx.strokeStyle = "#ffffff";
+  ctx.lineWidth = 1;
+  for(let x=0; x<w; x+=40){
+    ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,h); ctx.stroke();
+  }
+  for(let y=0; y<h; y+=40){
+    ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+
+  function lane(y0, title){
+    const y1 = y0 + laneH;
+    // outline
+    ctx.strokeStyle = "rgba(255,255,255,.18)";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(margin, y0, w-margin*2, laneH);
+
+    // title
+    ctx.fillStyle = "rgba(233,236,255,.92)";
+    ctx.font = "700 14px ui-sans-serif, system-ui";
+    ctx.fillText(title, margin, y0 - 10);
+
+    // zones
+    ctx.fillStyle = "rgba(42,127,255,.10)";
+    ctx.fillRect(margin, y0, shootW, laneH);
+    ctx.fillStyle = "rgba(255,204,102,.10)";
+    ctx.fillRect(w-margin-midW, y0, midW, laneH);
+
+    ctx.fillStyle = "rgba(233,236,255,.70)";
+    ctx.font = "12px ui-sans-serif, system-ui";
+    ctx.fillText("Shooting", margin+12, y0+18);
+    ctx.fillText("Zone", margin+12, y0+34);
+
+    ctx.fillText("Middle", w-margin-midW+12, y0+18);
+    ctx.fillText("Balls", w-margin-midW+12, y0+34);
+
+    // path line
+    const cy = y0 + laneH/2;
+    ctx.strokeStyle = "rgba(255,255,255,.22)";
+    ctx.lineWidth = 6;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(margin+shootW, cy);
+    ctx.lineTo(w-margin-midW, cy);
+    ctx.stroke();
+
+    return {y0, y1, cy};
+  }
+
+  const trenchLane = lane(trenchY0, "Trench lane (easier path)");
+  const bumpLane = lane(bumpY0, "Bump lane (harder path)");
+
+  // store lane centers
+  trench.laneY = trenchLane.cy;
+  bump.laneY = bumpLane.cy;
+
+  // store x positions
+  drawField.shootX = margin + shootW/2;
+  drawField.midX = w - margin - midW/2;
+  drawField.margin = margin;
+  drawField.shootW = shootW;
+  drawField.midW = midW;
+}
+
+function robotXY(r, w){
+  const shootX = drawField.shootX;
+  const midX = drawField.midX;
+  const x = shootX + (midX - shootX) * r.pos;
+  return {x, y: r.laneY};
+}
+
+function drawRobot(r, w, h){
+  const {x, y} = robotXY(r, w);
+  const radius = 18;
+
+  // body
+  ctx.fillStyle = r.color;
+  ctx.strokeStyle = "rgba(0,0,0,.55)";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(x, y, radius, 0, Math.PI*2);
+  ctx.fill();
+  ctx.stroke();
+
+  // label
+  ctx.fillStyle = "rgba(255,255,255,.95)";
+  ctx.font = "700 11px ui-sans-serif, system-ui";
+  const short = r.name.startsWith("Trench") ? "TR" : "BP";
+  ctx.textAlign = "center";
+  ctx.fillText(short, x, y+4);
+  ctx.textAlign = "left";
+
+  // HUD panel
+  const scored = Math.floor(r.ballsScored);
+  const inv = Math.floor(r.ballsInRobot);
+  const cap = Math.max(1, Math.floor(r.capacity));
+
+  const hudX = 18;
+  const hudY = y - 58;
+  const hudW = 260;
+  const hudH = 74;
+
+  ctx.fillStyle = "rgba(0,0,0,.22)";
+  ctx.strokeStyle = "rgba(255,255,255,.12)";
+  ctx.lineWidth = 1;
+  roundRect(hudX, hudY, hudW, hudH, 12, true, true);
+
+  ctx.fillStyle = "rgba(233,236,255,.92)";
+  ctx.font = "700 13px ui-sans-serif, system-ui";
+  ctx.fillText(r.name, hudX+12, hudY+22);
+
+  ctx.fillStyle = "rgba(174,182,230,.95)";
+  ctx.font = "12px ui-sans-serif, system-ui";
+  ctx.fillText(`State: ${r.state}`, hudX+12, hudY+40);
+  ctx.fillText(`Scored: ${scored}`, hudX+12, hudY+58);
+
+  // inventory bar
+  const barX = hudX + 130;
+  const barY = hudY + 46;
+  const barW = 115;
+  const barH = 10;
+  const frac = clamp(inv/cap, 0, 1);
+
+  ctx.strokeStyle = "rgba(255,255,255,.22)";
+  ctx.strokeRect(barX, barY, barW, barH);
+  ctx.fillStyle = r.color;
+  ctx.fillRect(barX, barY, barW*frac, barH);
+
+  ctx.fillStyle = "rgba(174,182,230,.95)";
+  ctx.font = "12px ui-sans-serif, system-ui";
+  ctx.fillText(`${inv}/${cap}`, barX, barY-4);
+}
+
+function roundRect(x, y, w, h, r, fill, stroke){
+  const rr = Math.min(r, w/2, h/2);
+  ctx.beginPath();
+  ctx.moveTo(x+rr, y);
+  ctx.arcTo(x+w, y, x+w, y+h, rr);
+  ctx.arcTo(x+w, y+h, x, y+h, rr);
+  ctx.arcTo(x, y+h, x, y, rr);
+  ctx.arcTo(x, y, x+w, y, rr);
+  ctx.closePath();
+  if(fill) ctx.fill();
+  if(stroke) ctx.stroke();
+}
+
+function draw(){
+  const {w, h} = resizeCanvasToDisplaySize();
+  drawField(w, h);
+  drawRobot(trench, w, h);
+  drawRobot(bump, w, h);
+}
+
+/* -----------------------------
+   Status / Winner
+------------------------------ */
+function updateStatus(){
+  const tLeft = Math.max(0, simDuration - simT);
+  const tr = Math.floor(trench.ballsScored);
+  const bp = Math.floor(bump.ballsScored);
+
+  let lead = "Tie";
+  if(tr > bp) lead = "Trench is ahead";
+  else if(bp > tr) lead = "Bump is ahead";
+
+  ui.statusBox.innerHTML = `
+    <div><b>Time:</b> <span class="muted">${simT.toFixed(2)}s / ${simDuration.toFixed(0)}s</span> <span class="muted">(Left: ${tLeft.toFixed(2)}s)</span></div>
+    <div style="margin-top:6px"><b>Trench:</b> <span class="muted">${tr}</span> scored — <span class="muted">${Math.floor(trench.ballsInRobot)}/${Math.floor(trench.capacity)}</span> in robot</div>
+    <div><b>Bump:</b> <span class="muted">${bp}</span> scored — <span class="muted">${Math.floor(bump.ballsInRobot)}/${Math.floor(bump.capacity)}</span> in robot</div>
+    <div style="margin-top:6px"><b>Lead:</b> <span class="muted">${lead}</span></div>
+  `;
+
+  if(!running && simT >= simDuration){
+    if(tr > bp){
+      ui.winnerPill.textContent = "Winner: Trench";
+      ui.winnerPill.style.borderColor = "rgba(42,127,255,.55)";
+      ui.winnerPill.style.background = "rgba(42,127,255,.22)";
+    } else if(bp > tr){
+      ui.winnerPill.textContent = "Winner: Bump";
+      ui.winnerPill.style.borderColor = "rgba(255,59,59,.55)";
+      ui.winnerPill.style.background = "rgba(255,59,59,.18)";
+    } else {
+      ui.winnerPill.textContent = "Tie";
+      ui.winnerPill.style.borderColor = "rgba(255,255,255,.18)";
+      ui.winnerPill.style.background = "rgba(255,255,255,.06)";
+    }
+  } else if(!running) {
+    ui.winnerPill.textContent = "Paused";
+    ui.winnerPill.style.borderColor = "rgba(255,255,255,.16)";
+    ui.winnerPill.style.background = "rgba(255,255,255,.05)";
+  } else {
+    ui.winnerPill.textContent = "Running";
+    ui.winnerPill.style.borderColor = "rgba(65,211,126,.55)";
+    ui.winnerPill.style.background = "rgba(65,211,126,.18)";
+  }
+}
+
+/* -----------------------------
+   Main Loop
+------------------------------ */
+function step(ts){
+  if(!running) return;
+  if(lastTS == null) lastTS = ts;
+
+  const dt = clamp((ts - lastTS) / 1000, 0, 0.05); // cap dt for stability
+  lastTS = ts;
+
+  const remaining = simDuration - simT;
+  if(remaining <= 0){
+    running = false;
+    ui.startBtn.textContent = "Start";
+    lastTS = null;
+    draw();
+    updateStatus();
+    return;
+  }
+
+  const dtUse = Math.min(dt, remaining);
+  simT += dtUse;
+
+  trench.update(dtUse);
+  bump.update(dtUse);
+
+  draw();
+  updateStatus();
+  requestAnimationFrame(step);
+}
+
+/* -----------------------------
+   Wiring
+------------------------------ */
+function attachControls(){
+  bindRangeAndNumber(ui.simDuration, ui.simDurationNum, ()=>{ applyParams(); });
+
+  bindRangeAndNumber(ui.trCapacity, ui.trCapacityNum, ()=>{ applyParams(); });
+  bindRangeAndNumber(ui.trShoot, ui.trShootNum, ()=>{ applyParams(); });
+  bindRangeAndNumber(ui.trTraverse, ui.trTraverseNum, ()=>{ applyParams(); });
+
+  bindRangeAndNumber(ui.bpCapacity, ui.bpCapacityNum, ()=>{ applyParams(); });
+  bindRangeAndNumber(ui.bpShoot, ui.bpShootNum, ()=>{ applyParams(); });
+  bindRangeAndNumber(ui.bpTraverse, ui.bpTraverseNum, ()=>{ applyParams(); });
+
+  bindRangeAndNumber(ui.pkBase, ui.pkBaseNum, ()=>{ applyParams(); });
+  bindRangeAndNumber(ui.pkGrowth, ui.pkGrowthNum, ()=>{ applyParams(); });
+  bindRangeAndNumber(ui.pkExp, ui.pkExpNum, ()=>{ applyParams(); });
+
+  ui.startBtn.addEventListener("click", ()=>{
+    if(!running){
+      // If we already finished, restart from current params
+      if(simT >= simDuration) resetSim();
+      applyParams();
+      running = true;
+      ui.startBtn.textContent = "Pause";
+      lastTS = null;
+      updateStatus();
+      requestAnimationFrame(step);
+    }else{
+      running = false;
+      ui.startBtn.textContent = "Start";
+      lastTS = null;
+      updateStatus();
+      draw();
+    }
+  });
+
+  ui.resetBtn.addEventListener("click", resetSim);
+
+  // handle resizing
+  window.addEventListener("resize", ()=>{ draw(); });
+}
+
+attachControls();
+resetSim();
+</script>
+</body>
+</html>
